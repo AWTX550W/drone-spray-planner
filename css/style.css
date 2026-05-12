@@ -1,180 +1,243 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: #0a0f1a;
-    color: #e0e6f0;
+    font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: #0b1120;
+    color: #d0d8e8;
     height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
+
+/* ─── 头部 ─────────────────────────────────────────── */
 header {
-    background: linear-gradient(135deg, #0d1b2a, #1b2838);
-    padding: 10px 24px;
+    background: linear-gradient(135deg, #0d1b2a 0%, #162033 100%);
+    padding: 8px 20px;
     display: flex;
-    align-items: baseline;
-    gap: 12px;
-    border-bottom: 1px solid #1e3a5f;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #1e3050;
     flex-shrink: 0;
 }
-header h1 { font-size: 18px; color: #4fc3f7; }
-header .subtitle { font-size: 12px; color: #5a7a9a; }
-
-main {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
+.header-left { display: flex; align-items: baseline; gap: 10px; }
+header h1 { font-size: 17px; color: #4fc3f7; font-weight: 600; }
+header .subtitle { font-size: 11px; color: #4a6a8a; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #555; display: inline-block;
 }
+.status-dot.connected { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+.conn-label { font-size: 11px; color: #667; }
 
-/* 左右面板通用 */
+/* ─── 主布局 ───────────────────────────────────────── */
+main { flex: 1; display: flex; overflow: hidden; }
+
 aside {
-    width: 260px;
-    background: #111827;
-    border-right: 1px solid #1e3a5f;
-    padding: 12px;
+    width: 250px;
+    background: #0f1729;
+    padding: 10px;
     overflow-y: auto;
     flex-shrink: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #1e3050 transparent;
 }
+aside::-webkit-scrollbar { width: 4px; }
+aside::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 2px; }
+
 aside h2 {
-    font-size: 14px;
+    font-size: 13px;
     color: #4fc3f7;
     margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #1e3a5f;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #1a2a40;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
-aside h3 { font-size: 12px; color: #8aa; margin: 8px 0 4px; }
+aside h3 { font-size: 11px; color: #5a7a9a; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-#params-panel {
-    border-right: none;
-    border-left: 1px solid #1e3a5f;
-}
+#farm-panel { border-right: 1px solid #1a2a40; }
+#params-panel { border-left: 1px solid #1a2a40; }
 
-.hint {
-    font-size: 11px;
-    color: #667;
-    margin-bottom: 8px;
-}
-.btn-group { display: flex; gap: 6px; margin-bottom: 8px; }
-.btn-group button, .preset-btn {
-    flex: 1;
-    padding: 5px 8px;
+.hint { font-size: 10px; color: #445; margin-bottom: 6px; }
+
+/* ─── 按钮 ─────────────────────────────────────────── */
+.btn-group { display: flex; gap: 4px; margin-bottom: 8px; }
+
+button {
+    padding: 5px 10px;
     font-size: 12px;
-    background: #1e293b;
-    color: #c0c8d8;
-    border: 1px solid #2a3a5a;
+    border: 1px solid #1e3050;
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
+    background: #141e30;
+    color: #b0b8c8;
 }
-.btn-group button:hover, .preset-btn:hover {
-    background: #2a3a5a;
-    color: #fff;
-}
-.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
+button:hover { background: #1e3050; color: #fff; }
+button:active { transform: scale(0.97); }
 
+.btn-sm { font-size: 11px; padding: 3px 8px; }
+.btn-primary { background: #0d47a1 !important; border-color: #1565c0 !important; color: #fff !important; font-weight: 500; }
+.btn-primary:hover { background: #1565c0 !important; }
+.btn-success { background: #1b5e20 !important; border-color: #2e7d32 !important; color: #fff !important; }
+.btn-success:hover { background: #2e7d32 !important; }
+.btn-danger { background: #b71c1c !important; border-color: #c62828 !important; color: #fff !important; }
+.btn-danger:hover { background: #c62828 !important; }
+
+.presets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3px; margin-bottom: 8px; }
+.preset-btn { font-size: 11px; padding: 4px 6px; text-align: center; }
+
+/* ─── Canvas ───────────────────────────────────────── */
 #farm-canvas {
     width: 100%;
     aspect-ratio: 1;
-    background: #0d1520;
-    border: 1px solid #1e3a5f;
+    background: #080e1a;
+    border: 1px solid #1a2a40;
     border-radius: 4px;
     cursor: crosshair;
 }
-#farm-info {
-    margin-top: 6px;
-    font-size: 11px;
-    color: #6a8aaa;
-}
+#farm-info { margin-top: 4px; font-size: 10px; color: #4a6a8a; }
 
-/* 参数 */
-.param-group {
-    margin-bottom: 10px;
-}
+/* ─── 参数 ─────────────────────────────────────────── */
+.param-group { margin-bottom: 8px; }
 .param-group label {
     display: block;
-    font-size: 12px;
-    color: #8aa;
-    margin-bottom: 4px;
+    font-size: 11px;
+    color: #6a8aaa;
+    margin-bottom: 3px;
 }
 .param-group input[type="range"] {
     width: 100%;
+    height: 4px;
     accent-color: #4fc3f7;
+    cursor: pointer;
 }
 .param-group input[type="number"],
+.param-group input[type="text"],
 .param-group select {
     width: 100%;
-    padding: 5px 8px;
-    background: #1a2332;
-    color: #c0d0e0;
-    border: 1px solid #2a3a5a;
-    border-radius: 4px;
-    font-size: 12px;
+    padding: 4px 6px;
+    background: #0a1020;
+    color: #b0c0d0;
+    border: 1px solid #1e3050;
+    border-radius: 3px;
+    font-size: 11px;
+    outline: none;
 }
-.param-val {
-    float: right;
-    font-size: 13px;
-    color: #4fc3f7;
-    font-weight: bold;
-}
+.param-group input:focus,
+.param-group select:focus { border-color: #4fc3f7; }
+.param-val { float: right; font-size: 12px; color: #4fc3f7; font-weight: 600; }
 
-/* 中间 3D 区域 */
-#viewer {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    position: relative;
+/* ─── 飞控状态 ─────────────────────────────────────── */
+.fc-status {
+    margin-top: 6px;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: #667;
+    background: #0a0f1a;
+    border-radius: 3px;
+    text-align: center;
+    border: 1px solid #1a2a40;
 }
-#three-container {
-    flex: 1;
-}
-.viewer-controls {
+.fc-status.connected { color: #4caf50; border-color: #2e7d32; }
+.fc-status.error { color: #ff5252; border-color: #c62828; }
+
+/* ─── 3D 视图 ──────────────────────────────────────── */
+#viewer { flex: 1; display: flex; flex-direction: column; }
+#three-container { flex: 1; position: relative; }
+
+.viewer-toolbar {
     display: flex;
-    gap: 8px;
-    padding: 8px 12px;
-    background: #111827;
-    border-top: 1px solid #1e3a5f;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #0f1729;
+    border-top: 1px solid #1a2a40;
     flex-shrink: 0;
 }
-.viewer-controls button {
-    padding: 6px 16px;
-    font-size: 13px;
-    background: #1e293b;
-    color: #c0c8d8;
-    border: 1px solid #2a3a5a;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.viewer-controls button:hover { background: #2a3a5a; color: #fff; }
-.btn-primary {
-    background: #0d47a1 !important;
-    border-color: #1565c0 !important;
-    color: #fff !important;
-}
-.btn-primary:hover { background: #1565c0 !important; }
+.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 6px; }
+.speed-label { font-size: 11px; color: #667; }
+#anim-speed { width: 80px; accent-color: #4fc3f7; }
+#anim-speed-val { font-size: 11px; color: #4fc3f7; font-weight: 600; min-width: 24px; }
 
-/* 底部统计 */
+/* ─── 统计栏 ───────────────────────────────────────── */
 #stats-bar {
     display: flex;
-    background: linear-gradient(135deg, #111827, #0d1b2a);
-    border-top: 1px solid #1e3a5f;
-    padding: 8px 16px;
-    gap: 16px;
+    background: linear-gradient(135deg, #0d1b2a, #0f1729);
+    border-top: 1px solid #1a2a40;
+    padding: 6px 12px;
+    gap: 8px;
     flex-shrink: 0;
 }
-.stat {
-    flex: 1;
-    text-align: center;
+.stat { flex: 1; text-align: center; padding: 2px 0; }
+.stat-label { display: block; font-size: 9px; color: #4a6a8a; margin-bottom: 1px; text-transform: uppercase; letter-spacing: 0.3px; }
+.stat-value { display: block; font-size: 15px; color: #4fc3f7; font-weight: 700; }
+
+/* ─── 弹窗 ─────────────────────────────────────────── */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
 }
-.stat-label {
-    display: block;
+.modal.hidden { display: none; }
+.modal-content {
+    background: #111b2e;
+    border: 1px solid #1e3050;
+    border-radius: 8px;
+    width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #1a2a40;
+}
+.modal-header h2 { font-size: 14px; color: #4fc3f7; }
+.btn-close { font-size: 20px; color: #667; background: none; border: none; }
+.btn-close:hover { color: #fff; }
+.modal-body { padding: 12px 16px; }
+.mission-section { margin-bottom: 12px; }
+.mission-section h3 { font-size: 12px; color: #4fc3f7; margin-bottom: 6px; }
+#mission-info { font-size: 12px; color: #8aa; line-height: 1.8; }
+.waypoint-pre {
+    background: #0a0f1a;
+    border: 1px solid #1a2a40;
+    border-radius: 4px;
+    padding: 8px;
     font-size: 10px;
-    color: #5a7a9a;
-    margin-bottom: 2px;
+    color: #8aa;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: "Consolas", monospace;
+    line-height: 1.6;
 }
-.stat-value {
-    display: block;
-    font-size: 16px;
-    color: #4fc3f7;
-    font-weight: bold;
+.mission-section .btn-group { margin-top: 6px; }
+
+/* ─── 飞行状态叠加层 ───────────────────────────────── */
+.flight-hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(10, 15, 26, 0.85);
+    border: 1px solid #1e3050;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #8aa;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    min-width: 160px;
 }
+.flight-hud .hud-row { display: flex; justify-content: space-between; margin: 2px 0; }
+.flight-hud .hud-val { color: #4fc3f7; font-weight: 600; font-family: "Consolas", monospace; }

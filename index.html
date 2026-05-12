@@ -8,14 +8,21 @@
 </head>
 <body>
     <header>
-        <h1>无人机喷洒路径规划模拟器</h1>
-        <span class="subtitle">Drone Spray Path Planner</span>
+        <div class="header-left">
+            <h1>无人机喷洒路径规划模拟器</h1>
+            <span class="subtitle">Drone Spray Path Planner v2.0</span>
+        </div>
+        <div class="header-right">
+            <span class="status-dot" id="conn-status"></span>
+            <span id="conn-label" class="conn-label">未连接</span>
+            <button id="btn-mission-panel" class="btn-sm">任务面板</button>
+        </div>
     </header>
 
     <main>
         <aside id="farm-panel">
             <h2>农田绘制</h2>
-            <p class="hint">左键添加顶点，右键闭合</p>
+            <p class="hint">左键添加顶点，右键闭合多边形</p>
             <div class="btn-group">
                 <button id="btn-undo">撤销</button>
                 <button id="btn-clear">清空</button>
@@ -26,6 +33,7 @@
                 <button class="preset-btn" data-shape="lshape">L 形</button>
                 <button class="preset-btn" data-shape="triangle">三角形</button>
                 <button class="preset-btn" data-shape="concave">凹多边形</button>
+                <button class="preset-btn" data-shape="uav">不规则田</button>
             </div>
             <canvas id="farm-canvas" width="320" height="320"></canvas>
             <div id="farm-info"></div>
@@ -33,16 +41,23 @@
 
         <section id="viewer">
             <div id="three-container"></div>
-            <div class="viewer-controls">
-                <button id="btn-generate" class="btn-primary">生成路径</button>
-                <button id="btn-animate">演示飞行</button>
-                <button id="btn-stop">停止</button>
-                <button id="btn-reset-cam">重置视角</button>
+            <div class="viewer-toolbar">
+                <div class="toolbar-left">
+                    <button id="btn-generate" class="btn-primary">生成路径</button>
+                    <button id="btn-animate" class="btn-success">演示飞行</button>
+                    <button id="btn-stop" class="btn-danger">停止</button>
+                    <button id="btn-reset-cam" class="btn-sm">重置视角</button>
+                </div>
+                <div class="toolbar-right">
+                    <label class="speed-label">动画速度</label>
+                    <input type="range" id="anim-speed" min="0.2" max="5" step="0.1" value="1">
+                    <span id="anim-speed-val">1x</span>
+                </div>
             </div>
         </section>
 
         <aside id="params-panel">
-            <h2>参数设置</h2>
+            <h2>飞行参数</h2>
             <div class="param-group">
                 <label>喷幅宽度 (m)</label>
                 <input type="range" id="swath-width" min="2" max="15" step="0.5" value="5">
@@ -77,6 +92,26 @@
                 <input type="range" id="overlap" min="0" max="40" step="5" value="20">
                 <span id="overlap-val" class="param-val">20</span>
             </div>
+
+            <h2>飞控接口</h2>
+            <div class="param-group">
+                <label>协议类型</label>
+                <select id="fc-protocol">
+                    <option value="mavlink">MAVLink (ArduPilot/PX4)</option>
+                    <option value="dji">DJI MSDK</option>
+                    <option value="custom">自定义 WebSocket</option>
+                </select>
+            </div>
+            <div class="param-group">
+                <label>连接地址</label>
+                <input type="text" id="fc-url" placeholder="ws://192.168.1.1:5760" value="">
+            </div>
+            <div class="btn-group">
+                <button id="btn-fc-connect" class="btn-sm">连接</button>
+                <button id="btn-fc-upload" class="btn-success">上传任务</button>
+                <button id="btn-fc-export" class="btn-sm">导出Waypoints</button>
+            </div>
+            <div id="fc-status" class="fc-status">未连接</div>
         </aside>
     </main>
 
@@ -87,13 +122,41 @@
         <div class="stat"><span class="stat-label">转弯次数</span><span class="stat-value" id="stat-turns">--</span></div>
         <div class="stat"><span class="stat-label">加药次数</span><span class="stat-value" id="stat-refills">--</span></div>
         <div class="stat"><span class="stat-label">路径点数</span><span class="stat-value" id="stat-points">--</span></div>
+        <div class="stat"><span class="stat-label">动画进度</span><span class="stat-value" id="stat-progress">--</span></div>
     </footer>
+
+    <!-- 任务面板弹窗 -->
+    <div id="mission-panel" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>任务管理面板</h2>
+                <button id="btn-close-mission" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="mission-section">
+                    <h3>当前任务</h3>
+                    <div id="mission-info">暂无任务，请先生成路径</div>
+                </div>
+                <div class="mission-section">
+                    <h3>Waypoint 列表</h3>
+                    <pre id="waypoint-list" class="waypoint-pre">--</pre>
+                </div>
+                <div class="mission-section">
+                    <h3>MAVLink 导出</h3>
+                    <button id="btn-export-mavlink" class="btn-sm">下载 .mission 文件</button>
+                    <button id="btn-export-json" class="btn-sm">下载 .json (QGC)</button>
+                    <button id="btn-copy-ll" class="btn-sm">复制经纬度列表</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/path-planner.js"></script>
     <script src="js/drone-model.js"></script>
     <script src="js/farm-editor.js"></script>
+    <script src="js/fc-interface.js"></script>
     <script src="js/visualizer.js"></script>
     <script src="js/main.js"></script>
 </body>
