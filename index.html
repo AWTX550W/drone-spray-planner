@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机喷洒路径规划模拟器</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>无人机喷洒路径规划模拟器</h1>
+        <span class="subtitle">Drone Spray Path Planner</span>
+    </header>
+
+    <main>
+        <aside id="farm-panel">
+            <h2>农田绘制</h2>
+            <p class="hint">左键添加顶点，右键闭合</p>
+            <div class="btn-group">
+                <button id="btn-undo">撤销</button>
+                <button id="btn-clear">清空</button>
+            </div>
+            <div class="presets">
+                <h3>预设形状</h3>
+                <button class="preset-btn" data-shape="rect">矩形</button>
+                <button class="preset-btn" data-shape="lshape">L 形</button>
+                <button class="preset-btn" data-shape="triangle">三角形</button>
+                <button class="preset-btn" data-shape="concave">凹多边形</button>
+            </div>
+            <canvas id="farm-canvas" width="320" height="320"></canvas>
+            <div id="farm-info"></div>
+        </aside>
+
+        <section id="viewer">
+            <div id="three-container"></div>
+            <div class="viewer-controls">
+                <button id="btn-generate" class="btn-primary">生成路径</button>
+                <button id="btn-animate">演示飞行</button>
+                <button id="btn-stop">停止</button>
+                <button id="btn-reset-cam">重置视角</button>
+            </div>
+        </section>
+
+        <aside id="params-panel">
+            <h2>参数设置</h2>
+            <div class="param-group">
+                <label>喷幅宽度 (m)</label>
+                <input type="range" id="swath-width" min="2" max="15" step="0.5" value="5">
+                <span id="swath-width-val" class="param-val">5</span>
+            </div>
+            <div class="param-group">
+                <label>飞行速度 (m/s)</label>
+                <input type="range" id="flight-speed" min="1" max="15" step="0.5" value="5">
+                <span id="flight-speed-val" class="param-val">5</span>
+            </div>
+            <div class="param-group">
+                <label>作业高度 (m)</label>
+                <input type="range" id="flight-height" min="1" max="10" step="0.5" value="3">
+                <span id="flight-height-val" class="param-val">3</span>
+            </div>
+            <div class="param-group">
+                <label>药液容量 (L)</label>
+                <input type="number" id="tank-capacity" min="5" max="50" value="16">
+            </div>
+            <div class="param-group">
+                <label>喷洒速率 (L/min)</label>
+                <input type="number" id="spray-rate" min="0.5" max="5" step="0.1" value="1.5">
+            </div>
+            <div class="param-group">
+                <label>路径模式</label>
+                <select id="path-mode">
+                    <option value="boustrophedon">平行往返（牛耕法）</option>
+                </select>
+            </div>
+            <div class="param-group">
+                <label>重叠率 (%)</label>
+                <input type="range" id="overlap" min="0" max="40" step="5" value="20">
+                <span id="overlap-val" class="param-val">20</span>
+            </div>
+        </aside>
+    </main>
+
+    <footer id="stats-bar">
+        <div class="stat"><span class="stat-label">覆盖面积</span><span class="stat-value" id="stat-area">--</span></div>
+        <div class="stat"><span class="stat-label">飞行距离</span><span class="stat-value" id="stat-distance">--</span></div>
+        <div class="stat"><span class="stat-label">预计时间</span><span class="stat-value" id="stat-time">--</span></div>
+        <div class="stat"><span class="stat-label">转弯次数</span><span class="stat-value" id="stat-turns">--</span></div>
+        <div class="stat"><span class="stat-label">加药次数</span><span class="stat-value" id="stat-refills">--</span></div>
+        <div class="stat"><span class="stat-label">路径点数</span><span class="stat-value" id="stat-points">--</span></div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/path-planner.js"></script>
+    <script src="js/drone-model.js"></script>
+    <script src="js/farm-editor.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

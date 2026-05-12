@@ -1,0 +1,180 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: #0a0f1a;
+    color: #e0e6f0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+header {
+    background: linear-gradient(135deg, #0d1b2a, #1b2838);
+    padding: 10px 24px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    border-bottom: 1px solid #1e3a5f;
+    flex-shrink: 0;
+}
+header h1 { font-size: 18px; color: #4fc3f7; }
+header .subtitle { font-size: 12px; color: #5a7a9a; }
+
+main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* 左右面板通用 */
+aside {
+    width: 260px;
+    background: #111827;
+    border-right: 1px solid #1e3a5f;
+    padding: 12px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+aside h2 {
+    font-size: 14px;
+    color: #4fc3f7;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #1e3a5f;
+}
+aside h3 { font-size: 12px; color: #8aa; margin: 8px 0 4px; }
+
+#params-panel {
+    border-right: none;
+    border-left: 1px solid #1e3a5f;
+}
+
+.hint {
+    font-size: 11px;
+    color: #667;
+    margin-bottom: 8px;
+}
+.btn-group { display: flex; gap: 6px; margin-bottom: 8px; }
+.btn-group button, .preset-btn {
+    flex: 1;
+    padding: 5px 8px;
+    font-size: 12px;
+    background: #1e293b;
+    color: #c0c8d8;
+    border: 1px solid #2a3a5a;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-group button:hover, .preset-btn:hover {
+    background: #2a3a5a;
+    color: #fff;
+}
+.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
+
+#farm-canvas {
+    width: 100%;
+    aspect-ratio: 1;
+    background: #0d1520;
+    border: 1px solid #1e3a5f;
+    border-radius: 4px;
+    cursor: crosshair;
+}
+#farm-info {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #6a8aaa;
+}
+
+/* 参数 */
+.param-group {
+    margin-bottom: 10px;
+}
+.param-group label {
+    display: block;
+    font-size: 12px;
+    color: #8aa;
+    margin-bottom: 4px;
+}
+.param-group input[type="range"] {
+    width: 100%;
+    accent-color: #4fc3f7;
+}
+.param-group input[type="number"],
+.param-group select {
+    width: 100%;
+    padding: 5px 8px;
+    background: #1a2332;
+    color: #c0d0e0;
+    border: 1px solid #2a3a5a;
+    border-radius: 4px;
+    font-size: 12px;
+}
+.param-val {
+    float: right;
+    font-size: 13px;
+    color: #4fc3f7;
+    font-weight: bold;
+}
+
+/* 中间 3D 区域 */
+#viewer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+#three-container {
+    flex: 1;
+}
+.viewer-controls {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #111827;
+    border-top: 1px solid #1e3a5f;
+    flex-shrink: 0;
+}
+.viewer-controls button {
+    padding: 6px 16px;
+    font-size: 13px;
+    background: #1e293b;
+    color: #c0c8d8;
+    border: 1px solid #2a3a5a;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.viewer-controls button:hover { background: #2a3a5a; color: #fff; }
+.btn-primary {
+    background: #0d47a1 !important;
+    border-color: #1565c0 !important;
+    color: #fff !important;
+}
+.btn-primary:hover { background: #1565c0 !important; }
+
+/* 底部统计 */
+#stats-bar {
+    display: flex;
+    background: linear-gradient(135deg, #111827, #0d1b2a);
+    border-top: 1px solid #1e3a5f;
+    padding: 8px 16px;
+    gap: 16px;
+    flex-shrink: 0;
+}
+.stat {
+    flex: 1;
+    text-align: center;
+}
+.stat-label {
+    display: block;
+    font-size: 10px;
+    color: #5a7a9a;
+    margin-bottom: 2px;
+}
+.stat-value {
+    display: block;
+    font-size: 16px;
+    color: #4fc3f7;
+    font-weight: bold;
+}
