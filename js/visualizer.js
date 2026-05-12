@@ -22,6 +22,11 @@ const Visualizer = (function () {
     // HUD 元素
     let hudEl = null;
 
+    // 地面相关
+    let groundMesh = null;
+    let groundSize = 400;
+    let groundSegments = 80;
+
     // ── 简易噪声函数（用于地形生成）──
     function simpleNoise(x, y) {
         const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
@@ -52,17 +57,12 @@ const Visualizer = (function () {
     }
 
     // 获取地面某点的高度（用于对齐物体到地面）
-    let groundMesh = null;
-    let groundSize = 400;
-    let groundSegments = 80;
     function getGroundHeight(x, z) {
         if (!groundMesh) return 0;
-        // 简单插值：从 groundMesh 的顶点数据估算
         const geom = groundMesh.geometry;
         const pos = geom.attributes.position;
         const halfSize = groundSize / 2;
         const segSize = groundSize / groundSegments;
-        // x, z -> grid coords
         const gx = (x + halfSize) / segSize;
         const gz = (z + halfSize) / segSize;
         const ix = Math.round(gx);
@@ -74,6 +74,286 @@ const Visualizer = (function () {
         return 0;
     }
 
+    // ── 云朵生成 ──
+    function createClouds() {
+        const cloudMat = new THREE.MeshLambertMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.85,
+        });
+
+        const cloudConfigs = [
+            { x: -80, y: 90, z: -100, scale: 1.2 },
+            { x: 60, y: 100, z: -120, scale: 1.5 },
+            { x: -30, y: 85, z: -60, scale: 0.8 },
+            { x: 120, y: 95, z: -50, scale: 1.0 },
+            { x: -120, y: 105, z: -80, scale: 1.3 },
+            { x: 30, y: 110, z: -150, scale: 1.1 },
+            { x: -60, y: 88, z: 80, scale: 0.9 },
+            { x: 90, y: 92, z: 60, scale: 1.0 },
+            { x: 0, y: 115, z: -180, scale: 1.4 },
+            { x: -150, y: 98, z: 30, scale: 0.7 },
+            { x: 150, y: 108, z: -110, scale: 1.2 },
+            { x: -100, y: 82, z: 120, scale: 0.6 },
+        ];
+
+        for (const cfg of cloudConfigs) {
+            const cloud = new THREE.Group();
+            const blobCount = 3 + Math.floor(simpleNoise(cfg.x, cfg.z) * 4);
+            for (let j = 0; j < blobCount; j++) {
+                const blobGeom = new THREE.SphereGeometry(
+                    4 + simpleNoise(j * 3.7, cfg.x) * 6, 8, 6
+                );
+                const blob = new THREE.Mesh(blobGeom, cloudMat);
+                blob.position.set(
+                    (simpleNoise(j * 2.1, cfg.y) - 0.5) * 12,
+                    (simpleNoise(j * 1.3, cfg.z) - 0.5) * 2,
+                    (simpleNoise(j * 4.7, cfg.x) - 0.5) * 6
+                );
+                blob.scale.y = 0.4 + simpleNoise(j, cfg.z) * 0.3;
+                cloud.add(blob);
+            }
+            cloud.position.set(cfg.x, cfg.y, cfg.z);
+            cloud.scale.setScalar(cfg.scale);
+            scene.add(cloud);
+            environmentObjects.push(cloud);
+        }
+    }
+
+    // ── 云朵缓慢飘动 ──
+    function updateClouds(delta) {
+        for (const obj of environmentObjects) {
+            if (obj.children && obj.children.length > 1) {
+                const firstChild = obj.children[0];
+                if (firstChild && firstChild.geometry &&
+                    firstChild.geometry.type === 'SphereGeometry' &&
+                    firstChild.scale.y < 0.8) {
+                    obj.position.x += delta * (0.3 + simpleNoise(obj.position.x, obj.position.z) * 0.5);
+                    if (obj.position.x > 200) obj.position.x = -200;
+                }
+            }
+        }
+    }
+
+    // 创建一棵低面数树
+    function createTree() {
+        const tree = new THREE.Group();
+        const treeType = simpleNoise(Math.random() * 100, Math.random() * 100);
+
+        const trunkH = 1.5 + treeType * 1.5;
+        const trunkGeom = new THREE.CylinderGeometry(0.15, 0.25, trunkH, 5);
+        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c3a1e });
+        const trunk = new THREE.Mesh(trunkGeom, trunkMat);
+        trunk.position.y = trunkH / 2;
+        trunk.castShadow = true;
+        tree.add(trunk);
+
+        if (treeType < 0.5) {
+            const crownGeom = new THREE.SphereGeometry(1.2 + treeType * 1.0, 6, 5);
+            const greenVar = 0.15 + treeType * 0.1;
+            const crownMat = new THREE.MeshLambertMaterial({
+                color: new THREE.Color(0.1 + greenVar * 0.3, 0.35 + greenVar, 0.08 + greenVar * 0.1),
+            });
+            const crown = new THREE.Mesh(crownGeom, crownMat);
+            crown.position.y = trunkH + 0.6;
+            crown.scale.y = 0.8;
+            crown.castShadow = true;
+            tree.add(crown);
+        } else {
+            const coneH = 2.5 + treeType * 1.5;
+            const coneGeom = new THREE.ConeGeometry(1.0 + treeType * 0.5, coneH, 6);
+            const coneMat = new THREE.MeshLambertMaterial({
+                color: new THREE.Color(0.05, 0.25 + treeType * 0.15, 0.05),
+            });
+            const cone = new THREE.Mesh(coneGeom, coneMat);
+            cone.position.y = trunkH + coneH / 2 - 0.3;
+            cone.castShadow = true;
+            tree.add(cone);
+        }
+
+        const s = 0.8 + treeType * 0.6;
+        tree.scale.setScalar(s);
+        return tree;
+    }
+
+    // 创建电线杆
+    function createPowerPole() {
+        const pole = new THREE.Group();
+        const poleMat = new THREE.MeshLambertMaterial({ color: 0x6b5b4f });
+
+        const mainGeom = new THREE.CylinderGeometry(0.12, 0.18, 9, 6);
+        const main = new THREE.Mesh(mainGeom, poleMat);
+        main.position.y = 4.5;
+        main.castShadow = true;
+        pole.add(main);
+
+        const armGeom = new THREE.BoxGeometry(3, 0.1, 0.1);
+        const arm1 = new THREE.Mesh(armGeom, poleMat);
+        arm1.position.y = 8.5;
+        pole.add(arm1);
+        const arm2 = new THREE.Mesh(armGeom, poleMat);
+        arm2.position.y = 7.5;
+        pole.add(arm2);
+
+        const insMat = new THREE.MeshLambertMaterial({ color: 0x8faaaa });
+        for (const y of [7.5, 8.5]) {
+            for (const xOff of [-1.3, 0, 1.3]) {
+                const insGeom = new THREE.CylinderGeometry(0.04, 0.06, 0.3, 4);
+                const ins = new THREE.Mesh(insGeom, insMat);
+                ins.position.set(xOff, y + 0.2, 0);
+                pole.add(ins);
+            }
+        }
+
+        return pole;
+    }
+
+    // 添加电线（悬链线）
+    function addPowerLine(p1, p2, height) {
+        const x1 = p1.x, z1 = -p1.z, x2 = p2.x, z2 = -p2.z;
+        const h1 = getGroundHeight(p1.x, -p1.z) + height;
+        const h2 = getGroundHeight(p2.x, -p2.z) + height;
+        const segments = 12;
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            const x = x1 + t * (x2 - x1);
+            const z = z1 + t * (z2 - z1);
+            const baseY = h1 + t * (h2 - h1);
+            const sag = Math.sin(t * Math.PI) * 1.5;
+            points.push(new THREE.Vector3(x, baseY - sag, z));
+        }
+        const lineGeom = new THREE.BufferGeometry().setFromPoints(points);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 });
+        const line = new THREE.Line(lineGeom, lineMat);
+        scene.add(line);
+        environmentObjects.push(line);
+    }
+
+    // 创建小房子
+    function createHouse() {
+        const house = new THREE.Group();
+
+        const wallGeom = new THREE.BoxGeometry(4, 2.5, 3.5);
+        const wallMat = new THREE.MeshLambertMaterial({ color: 0xd4c4a8 });
+        const wall = new THREE.Mesh(wallGeom, wallMat);
+        wall.position.y = 1.25;
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        house.add(wall);
+
+        const roofGeom = new THREE.ConeGeometry(3.2, 1.8, 4);
+        const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+        const roof = new THREE.Mesh(roofGeom, roofMat);
+        roof.position.y = 3.4;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        house.add(roof);
+
+        const doorGeom = new THREE.BoxGeometry(0.7, 1.5, 0.05);
+        const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a3728 });
+        const door = new THREE.Mesh(doorGeom, doorMat);
+        door.position.set(0, 0.75, 1.78);
+        house.add(door);
+
+        const winMat = new THREE.MeshLambertMaterial({ color: 0x88ccff, emissive: 0x223344 });
+        for (const xOff of [-1.1, 1.1]) {
+            const winGeom = new THREE.BoxGeometry(0.5, 0.5, 0.05);
+            const win = new THREE.Mesh(winGeom, winMat);
+            win.position.set(xOff, 1.6, 1.78);
+            house.add(win);
+        }
+
+        const chimGeom = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+        const chimMat = new THREE.MeshLambertMaterial({ color: 0x8b6b4a });
+        const chimney = new THREE.Mesh(chimGeom, chimMat);
+        chimney.position.set(1, 3.8, -0.5);
+        chimney.castShadow = true;
+        house.add(chimney);
+
+        return house;
+    }
+
+    // ── 环境装饰 ──
+    function createEnvironment() {
+        // ── 树木 ──
+        const treePositions = [];
+        const treeSeeds = [
+            { x: -55, z: -55 }, { x: 65, z: -45 }, { x: -45, z: 50 },
+            { x: 70, z: 60 }, { x: -70, z: -20 }, { x: 55, z: -70 },
+            { x: -60, z: 70 }, { x: 80, z: -10 }, { x: -80, z: -65 },
+            { x: 45, z: 75 }, { x: -75, z: 40 }, { x: 85, z: 45 },
+            { x: -50, z: -80 }, { x: 95, z: -60 }, { x: -90, z: 55 },
+            { x: 30, z: -85 }, { x: -30, z: 85 },
+            { x: 110, z: 20 }, { x: -120, z: -40 }, { x: 100, z: -90 },
+            { x: -100, z: 100 }, { x: 130, z: -30 }, { x: -130, z: 80 },
+        ];
+
+        for (const seed of treeSeeds) {
+            const count = 1 + Math.floor(simpleNoise(seed.x * 0.1, seed.z * 0.1) * 3);
+            for (let i = 0; i < count; i++) {
+                const tx = seed.x + (simpleNoise(seed.x + i, seed.z) - 0.5) * 15;
+                const tz = seed.z + (simpleNoise(seed.x, seed.z + i) - 0.5) * 15;
+                const dist = Math.sqrt(tx * tx + tz * tz);
+                if (dist < 45) continue;
+                treePositions.push({ x: tx, z: tz });
+            }
+        }
+
+        for (const tp of treePositions) {
+            const tree = createTree();
+            const gh = getGroundHeight(tp.x, -tp.z);
+            tree.position.set(tp.x, gh, -tp.z);
+            scene.add(tree);
+            environmentObjects.push(tree);
+        }
+
+        // ── 电线杆 ──
+        const polePositions = [
+            { x: -40, z: -55 }, { x: -20, z: -55 }, { x: 0, z: -55 }, { x: 20, z: -55 }, { x: 40, z: -55 },
+            { x: -55, z: 55 }, { x: -35, z: 55 }, { x: -15, z: 55 }, { x: 5, z: 55 }, { x: 25, z: 55 }, { x: 45, z: 55 },
+        ];
+
+        for (let i = 0; i < polePositions.length; i++) {
+            const pp = polePositions[i];
+            const pole = createPowerPole();
+            const gh = getGroundHeight(pp.x, -pp.z);
+            pole.position.set(pp.x, gh, -pp.z);
+            scene.add(pole);
+            environmentObjects.push(pole);
+        }
+
+        // 第一排电线
+        for (let i = 0; i < 4; i++) {
+            const p1 = polePositions[i], p2 = polePositions[i + 1];
+            addPowerLine(p1, p2, 8.5);
+            addPowerLine(p1, p2, 7.5);
+        }
+        // 第二排电线
+        for (let i = 5; i < 10; i++) {
+            const p1 = polePositions[i], p2 = polePositions[i + 1];
+            addPowerLine(p1, p2, 8.5);
+            addPowerLine(p1, p2, 7.5);
+        }
+
+        // ── 小房子 ──
+        const housePositions = [
+            { x: 90, z: -80 }, { x: -95, z: 70 }, { x: 80, z: 85 },
+        ];
+
+        for (const hp of housePositions) {
+            const house = createHouse();
+            const gh = getGroundHeight(hp.x, -hp.z);
+            house.position.set(hp.x, gh, -hp.z);
+            house.rotation.y = simpleNoise(hp.x * 0.1, hp.z * 0.1) * Math.PI;
+            scene.add(house);
+            environmentObjects.push(house);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // init() — 入口，调用上面定义的所有模块级函数
+    // ──────────────────────────────────────────────────────────
     function init() {
         const container = document.getElementById('three-container');
         clock = new THREE.Clock();
@@ -92,11 +372,18 @@ const Visualizer = (function () {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
+        if (THREE.ACESFilmicToneMapping !== undefined) {
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+        }
         container.appendChild(renderer.domElement);
 
         // 控制器
+        if (typeof THREE.OrbitControls === 'undefined') {
+            console.error('OrbitControls 未加载，请检查 js/OrbitControls.js');
+            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#e55;font-size:16px;">OrbitControls 加载失败，请刷新页面重试</div>';
+            return;
+        }
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
@@ -136,14 +423,10 @@ const Visualizer = (function () {
             const y = posAttr.getY(i);
             const dist = Math.sqrt(x * x + y * y);
 
-            // 多层噪声叠加生成自然地形
             let h = 0;
-            // 丘陵起伏
             h += (fbmNoise(x * 0.02 + 3.7, y * 0.02 + 1.2, 4) - 0.5) * 3.0;
-            // 田间田垄（细条纹）
             const ridge = Math.sin(y * 1.5) * 0.15;
             h += ridge * Math.max(0, 1 - dist / 100);
-            // 边缘区域降低，模拟远处平地
             if (dist > 120) {
                 const edgeFade = Math.min(1, (dist - 120) / 80);
                 h *= (1 - edgeFade);
@@ -151,43 +434,35 @@ const Visualizer = (function () {
 
             posAttr.setZ(i, h);
 
-            // 农田纹理色彩（基于位置和噪声的区块着色）
             const cropNoise = fbmNoise(x * 0.008 + 10, y * 0.008 + 20, 3);
             const detailNoise = simpleNoise(x * 0.05, y * 0.05);
             let r, g, b;
 
             if (dist < 60) {
-                // 近处农田：深绿到黄绿色变化，模拟不同作物
                 if (cropNoise < 0.35) {
-                    // 深绿水稻田
                     r = 0.18 + detailNoise * 0.05;
                     g = 0.42 + detailNoise * 0.08;
                     b = 0.15 + detailNoise * 0.03;
                 } else if (cropNoise < 0.55) {
-                    // 黄绿蔬菜地
                     r = 0.30 + detailNoise * 0.06;
                     g = 0.52 + detailNoise * 0.06;
                     b = 0.18 + detailNoise * 0.04;
                 } else if (cropNoise < 0.72) {
-                    // 成熟金黄麦田
                     r = 0.58 + detailNoise * 0.08;
                     g = 0.55 + detailNoise * 0.06;
                     b = 0.20 + detailNoise * 0.04;
                 } else {
-                    // 浅绿休耕地
                     r = 0.35 + detailNoise * 0.05;
                     g = 0.50 + detailNoise * 0.07;
                     b = 0.25 + detailNoise * 0.04;
                 }
             } else if (dist < 120) {
-                // 中距离：过渡区域，草地色
                 const t = (dist - 60) / 60;
                 const grassNoise = fbmNoise(x * 0.015, y * 0.015, 2);
                 r = 0.22 + grassNoise * 0.1 + t * 0.1;
                 g = 0.40 + grassNoise * 0.1 - t * 0.05;
                 b = 0.18 + grassNoise * 0.05 + t * 0.05;
             } else {
-                // 远处：灰绿/棕黄自然地面
                 const t = Math.min(1, (dist - 120) / 80);
                 r = 0.35 + t * 0.15;
                 g = 0.38 + t * 0.05;
@@ -202,9 +477,7 @@ const Visualizer = (function () {
         groundGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         groundGeom.computeVertexNormals();
 
-        const groundMat = new THREE.MeshLambertMaterial({
-            vertexColors: true,
-        });
+        const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
         groundMesh = new THREE.Mesh(groundGeom, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
         groundMesh.receiveShadow = true;
@@ -260,29 +533,20 @@ const Visualizer = (function () {
 
         // ── 太阳 ──
         const sunGroup = new THREE.Group();
-        // 太阳球体
         const sunGeom = new THREE.SphereGeometry(5, 16, 16);
         const sunMat = new THREE.MeshBasicMaterial({ color: 0xffee88 });
         const sunSphere = new THREE.Mesh(sunGeom, sunMat);
         sunSphere.position.set(100, 120, -80);
         sunGroup.add(sunSphere);
-        // 太阳光晕
+
         const glowGeom = new THREE.SphereGeometry(12, 16, 16);
-        const glowMat = new THREE.MeshBasicMaterial({
-            color: 0xffdd66,
-            transparent: true,
-            opacity: 0.15,
-        });
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd66, transparent: true, opacity: 0.15 });
         const glow = new THREE.Mesh(glowGeom, glowMat);
         glow.position.copy(sunSphere.position);
         sunGroup.add(glow);
-        // 更大的外层光晕
+
         const outerGlowGeom = new THREE.SphereGeometry(25, 16, 16);
-        const outerGlowMat = new THREE.MeshBasicMaterial({
-            color: 0xffcc44,
-            transparent: true,
-            opacity: 0.06,
-        });
+        const outerGlowMat = new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.06 });
         const outerGlow = new THREE.Mesh(outerGlowGeom, outerGlowMat);
         outerGlow.position.copy(sunSphere.position);
         sunGroup.add(outerGlow);
@@ -291,309 +555,13 @@ const Visualizer = (function () {
         // ── 云朵 ──
         createClouds();
 
-    // ── 云朵生成 ──
-    function createClouds() {
-        const cloudMat = new THREE.MeshLambertMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.85,
-        });
+        // ── 无人机 ──
+        droneGroup = DroneModel.create();
+        droneGroup.visible = false;
+        scene.add(droneGroup);
 
-        const cloudConfigs = [
-            { x: -80, y: 90, z: -100, scale: 1.2 },
-            { x: 60, y: 100, z: -120, scale: 1.5 },
-            { x: -30, y: 85, z: -60, scale: 0.8 },
-            { x: 120, y: 95, z: -50, scale: 1.0 },
-            { x: -120, y: 105, z: -80, scale: 1.3 },
-            { x: 30, y: 110, z: -150, scale: 1.1 },
-            { x: -60, y: 88, z: 80, scale: 0.9 },
-            { x: 90, y: 92, z: 60, scale: 1.0 },
-            { x: 0, y: 115, z: -180, scale: 1.4 },
-            { x: -150, y: 98, z: 30, scale: 0.7 },
-            { x: 150, y: 108, z: -110, scale: 1.2 },
-            { x: -100, y: 82, z: 120, scale: 0.6 },
-        ];
-
-        for (const cfg of cloudConfigs) {
-            const cloud = new THREE.Group();
-            // 每朵云由多个椭球体组成
-            const blobCount = 3 + Math.floor(simpleNoise(cfg.x, cfg.z) * 4);
-            for (let j = 0; j < blobCount; j++) {
-                const blobGeom = new THREE.SphereGeometry(
-                    4 + simpleNoise(j * 3.7, cfg.x) * 6,
-                    8, 6
-                );
-                const blob = new THREE.Mesh(blobGeom, cloudMat);
-                blob.position.set(
-                    (simpleNoise(j * 2.1, cfg.y) - 0.5) * 12,
-                    (simpleNoise(j * 1.3, cfg.z) - 0.5) * 2,
-                    (simpleNoise(j * 4.7, cfg.x) - 0.5) * 6
-                );
-                blob.scale.y = 0.4 + simpleNoise(j, cfg.z) * 0.3; // 扁平
-                cloud.add(blob);
-            }
-            cloud.position.set(cfg.x, cfg.y, cfg.z);
-            cloud.scale.setScalar(cfg.scale);
-            scene.add(cloud);
-            environmentObjects.push(cloud);
-        }
-    }
-
-    // ── 环境装饰 ──
-    function createEnvironment() {
-        // ── 树木 ──
-        const treePositions = [];
-        // 生成一圈树木，避免放在农田中心
-        const treeSeeds = [
-            { x: -55, z: -55 }, { x: 65, z: -45 }, { x: -45, z: 50 },
-            { x: 70, z: 60 }, { x: -70, z: -20 }, { x: 55, z: -70 },
-            { x: -60, z: 70 }, { x: 80, z: -10 }, { x: -80, z: -65 },
-            { x: 45, z: 75 }, { x: -75, z: 40 }, { x: 85, z: 45 },
-            { x: -50, z: -80 }, { x: 95, z: -60 }, { x: -90, z: 55 },
-            { x: 30, z: -85 }, { x: -30, z: 85 },
-            // 远处零散的树
-            { x: 110, z: 20 }, { x: -120, z: -40 }, { x: 100, z: -90 },
-            { x: -100, z: 100 }, { x: 130, z: -30 }, { x: -130, z: 80 },
-        ];
-
-        for (const seed of treeSeeds) {
-            const count = 1 + Math.floor(simpleNoise(seed.x * 0.1, seed.z * 0.1) * 3);
-            for (let i = 0; i < count; i++) {
-                const tx = seed.x + (simpleNoise(seed.x + i, seed.z) - 0.5) * 15;
-                const tz = seed.z + (simpleNoise(seed.x, seed.z + i) - 0.5) * 15;
-                const dist = Math.sqrt(tx * tx + tz * tz);
-                if (dist < 45) continue; // 避开农田操作区
-                treePositions.push({ x: tx, z: tz });
-            }
-        }
-
-        for (const tp of treePositions) {
-            const tree = createTree();
-            const gh = getGroundHeight(tp.x, -tp.z);
-            tree.position.set(tp.x, gh, -tp.z);
-            scene.add(tree);
-            environmentObjects.push(tree);
-        }
-
-        // ── 电线杆 ──
-        const polePositions = [
-            { x: -40, z: -55 }, { x: -20, z: -55 }, { x: 0, z: -55 }, { x: 20, z: -55 }, { x: 40, z: -55 },
-            { x: -55, z: 55 }, { x: -35, z: 55 }, { x: -15, z: 55 }, { x: 5, z: 55 }, { x: 25, z: 55 }, { x: 45, z: 55 },
-        ];
-
-        for (let i = 0; i < polePositions.length; i++) {
-            const pp = polePositions[i];
-            const pole = createPowerPole();
-            const gh = getGroundHeight(pp.x, -pp.z);
-            pole.position.set(pp.x, gh, -pp.z);
-            scene.add(pole);
-            environmentObjects.push(pole);
-        }
-
-        // ── 电线（连接电线杆）──
-        // 第一排电线
-        for (let i = 0; i < 4; i++) {
-            const p1 = polePositions[i], p2 = polePositions[i + 1];
-            addPowerLine(p1, p2, 8.5);
-            addPowerLine(p1, p2, 7.5);
-        }
-        // 第二排电线
-        for (let i = 5; i < 10; i++) {
-            const p1 = polePositions[i], p2 = polePositions[i + 1];
-            addPowerLine(p1, p2, 8.5);
-            addPowerLine(p1, p2, 7.5);
-        }
-
-        // ── 小房子 ──
-        const housePositions = [
-            { x: 90, z: -80 }, { x: -95, z: 70 }, { x: 80, z: 85 },
-        ];
-
-        for (const hp of housePositions) {
-            const house = createHouse();
-            const gh = getGroundHeight(hp.x, -hp.z);
-            house.position.set(hp.x, gh, -hp.z);
-            house.rotation.y = simpleNoise(hp.x * 0.1, hp.z * 0.1) * Math.PI;
-            scene.add(house);
-            environmentObjects.push(house);
-        }
-    }
-
-    // 创建一棵低面数树
-    function createTree() {
-        const tree = new THREE.Group();
-        const treeType = simpleNoise(Math.random() * 100, Math.random() * 100);
-
-        // 树干
-        const trunkH = 1.5 + treeType * 1.5;
-        const trunkGeom = new THREE.CylinderGeometry(0.15, 0.25, trunkH, 5);
-        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c3a1e });
-        const trunk = new THREE.Mesh(trunkGeom, trunkMat);
-        trunk.position.y = trunkH / 2;
-        trunk.castShadow = true;
-        tree.add(trunk);
-
-        if (treeType < 0.5) {
-            // 圆形树冠（落叶树）
-            const crownGeom = new THREE.SphereGeometry(1.2 + treeType * 1.0, 6, 5);
-            const greenVar = 0.15 + treeType * 0.1;
-            const crownMat = new THREE.MeshLambertMaterial({
-                color: new THREE.Color(0.1 + greenVar * 0.3, 0.35 + greenVar, 0.08 + greenVar * 0.1),
-            });
-            const crown = new THREE.Mesh(crownGeom, crownMat);
-            crown.position.y = trunkH + 0.6;
-            crown.scale.y = 0.8;
-            crown.castShadow = true;
-            tree.add(crown);
-        } else {
-            // 锥形树冠（松树）
-            const coneH = 2.5 + treeType * 1.5;
-            const coneGeom = new THREE.ConeGeometry(1.0 + treeType * 0.5, coneH, 6);
-            const coneMat = new THREE.MeshLambertMaterial({
-                color: new THREE.Color(0.05, 0.25 + treeType * 0.15, 0.05),
-            });
-            const cone = new THREE.Mesh(coneGeom, coneMat);
-            cone.position.y = trunkH + coneH / 2 - 0.3;
-            cone.castShadow = true;
-            tree.add(cone);
-        }
-
-        const s = 0.8 + treeType * 0.6;
-        tree.scale.setScalar(s);
-        return tree;
-    }
-
-    // 创建电线杆
-    function createPowerPole() {
-        const pole = new THREE.Group();
-        const poleMat = new THREE.MeshLambertMaterial({ color: 0x6b5b4f });
-
-        // 主杆
-        const mainGeom = new THREE.CylinderGeometry(0.12, 0.18, 9, 6);
-        const main = new THREE.Mesh(mainGeom, poleMat);
-        main.position.y = 4.5;
-        main.castShadow = true;
-        pole.add(main);
-
-        // 横担
-        const armGeom = new THREE.BoxGeometry(3, 0.1, 0.1);
-        const arm1 = new THREE.Mesh(armGeom, poleMat);
-        arm1.position.y = 8.5;
-        pole.add(arm1);
-        const arm2 = new THREE.Mesh(armGeom, poleMat);
-        arm2.position.y = 7.5;
-        pole.add(arm2);
-
-        // 绝缘子（小圆柱）
-        const insMat = new THREE.MeshLambertMaterial({ color: 0x8faaaa });
-        for (const y of [7.5, 8.5]) {
-            for (const xOff of [-1.3, 0, 1.3]) {
-                const insGeom = new THREE.CylinderGeometry(0.04, 0.06, 0.3, 4);
-                const ins = new THREE.Mesh(insGeom, insMat);
-                ins.position.set(xOff, y + 0.2, 0);
-                pole.add(ins);
-            }
-        }
-
-        return pole;
-    }
-
-    // 添加电线（悬链线）
-    function addPowerLine(p1, p2, height) {
-        const x1 = p1.x, z1 = -p1.z, x2 = p2.x, z2 = -p2.z;
-        const h1 = getGroundHeight(p1.x, -p1.z) + height;
-        const h2 = getGroundHeight(p2.x, -p2.z) + height;
-        const segments = 12;
-        const points = [];
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const x = x1 + t * (x2 - x1);
-            const z = z1 + t * (z2 - z1);
-            const baseY = h1 + t * (h2 - h1);
-            // 悬链线下垂
-            const sag = Math.sin(t * Math.PI) * 1.5;
-            points.push(new THREE.Vector3(x, baseY - sag, z));
-        }
-        const lineGeom = new THREE.BufferGeometry().setFromPoints(points);
-        const lineMat = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 });
-        const line = new THREE.Line(lineGeom, lineMat);
-        scene.add(line);
-        environmentObjects.push(line);
-    }
-
-    // 创建小房子
-    function createHouse() {
-        const house = new THREE.Group();
-
-        // 墙体
-        const wallGeom = new THREE.BoxGeometry(4, 2.5, 3.5);
-        const wallMat = new THREE.MeshLambertMaterial({ color: 0xd4c4a8 });
-        const wall = new THREE.Mesh(wallGeom, wallMat);
-        wall.position.y = 1.25;
-        wall.castShadow = true;
-        wall.receiveShadow = true;
-        house.add(wall);
-
-        // 屋顶（三角锥）
-        const roofGeom = new THREE.ConeGeometry(3.2, 1.8, 4);
-        const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
-        const roof = new THREE.Mesh(roofGeom, roofMat);
-        roof.position.y = 3.4;
-        roof.rotation.y = Math.PI / 4;
-        roof.castShadow = true;
-        house.add(roof);
-
-        // 门
-        const doorGeom = new THREE.BoxGeometry(0.7, 1.5, 0.05);
-        const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a3728 });
-        const door = new THREE.Mesh(doorGeom, doorMat);
-        door.position.set(0, 0.75, 1.78);
-        house.add(door);
-
-        // 窗户
-        const winMat = new THREE.MeshLambertMaterial({ color: 0x88ccff, emissive: 0x223344 });
-        for (const xOff of [-1.1, 1.1]) {
-            const winGeom = new THREE.BoxGeometry(0.5, 0.5, 0.05);
-            const win = new THREE.Mesh(winGeom, winMat);
-            win.position.set(xOff, 1.6, 1.78);
-            house.add(win);
-        }
-
-        // 烟囱
-        const chimGeom = new THREE.BoxGeometry(0.4, 1.2, 0.4);
-        const chimMat = new THREE.MeshLambertMaterial({ color: 0x8b6b4a });
-        const chimney = new THREE.Mesh(chimGeom, chimMat);
-        chimney.position.set(1, 3.8, -0.5);
-        chimney.castShadow = true;
-        house.add(chimney);
-
-        return house;
-    }
-
-    // ── 云朵缓慢飘动 ──
-    function updateClouds(delta) {
-        for (const obj of environmentObjects) {
-            if (obj.children && obj.children.length > 1) {
-                // 检查是否是云朵（有多个扁平球体的组）
-                const firstChild = obj.children[0];
-                if (firstChild && firstChild.geometry &&
-                    firstChild.geometry.type === 'SphereGeometry' &&
-                    firstChild.scale.y < 0.8) {
-                    obj.position.x += delta * (0.3 + simpleNoise(obj.position.x, obj.position.z) * 0.5);
-                    // 超出范围重置
-                    if (obj.position.x > 200) obj.position.x = -200;
-                }
-            }
-        }
-    }
-
-    // ── 无人机 ──
-    droneGroup = DroneModel.create();
-    droneGroup.visible = false;
-    scene.add(droneGroup);
-
-    // ── 创建环境装饰 ──
-    createEnvironment();
+        // ── 创建环境装饰 ──
+        createEnvironment();
 
         // ── HUD ──
         hudEl = document.createElement('div');
@@ -688,18 +656,14 @@ const Visualizer = (function () {
 
         droneGroup.position.set(x, height, -y);
 
-        // 朝向
         const heading = Math.atan2(next.y - prev.y, next.x - prev.x);
         DroneModel.setHeading(heading);
 
-        // 喷洒（直线段中间喷，转弯不喷）
         const isTurning = t < 0.05 || t > 0.95;
         DroneModel.setSpraying(!isTurning);
 
-        // 轨迹
         DroneModel.addTrailPoint(droneGroup.position);
 
-        // 更新 HUD
         if (hudEl) {
             hudEl.classList.remove('hidden');
             document.getElementById('hud-alt').textContent = height.toFixed(1) + ' m';
@@ -751,7 +715,6 @@ const Visualizer = (function () {
     function updateFarmBoundary(polygon) {
         if (!polygon || polygon.length < 3) return;
 
-        // 农田区域（带纹理感）
         const shape = new THREE.Shape();
         shape.moveTo(polygon[0].x, -polygon[0].y);
         for (let i = 1; i < polygon.length; i++) {
@@ -772,7 +735,7 @@ const Visualizer = (function () {
         scene.add(farmMesh);
         dynamicObjects.push(farmMesh);
 
-        // 边界围栏（3D管道效果）
+        // 边界围栏
         const borderPts = [];
         for (const p of polygon) {
             borderPts.push(new THREE.Vector3(p.x, 0, -p.y));
@@ -804,7 +767,6 @@ const Visualizer = (function () {
         if (!path || path.length < 2) return;
         const h = height || 3;
 
-        // 用 TubeGeometry 做出有粗度的路径
         const pts = path.map(p => new THREE.Vector3(p.x, h, -p.y));
         const curve = new THREE.CatmullRomCurve3(pts, false);
         const tubeGeom = new THREE.TubeGeometry(curve, path.length * 2, 0.08, 4, false);
@@ -818,7 +780,6 @@ const Visualizer = (function () {
         scene.add(tube);
         dynamicObjects.push(tube);
 
-        // 路径投影到地面的阴影线
         const shadowPts = path.map(p => new THREE.Vector3(p.x, 0.05, -p.y));
         const shadowGeom = new THREE.BufferGeometry().setFromPoints(shadowPts);
         const shadowMat = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.3 });
@@ -826,7 +787,6 @@ const Visualizer = (function () {
         scene.add(shadowLine);
         dynamicObjects.push(shadowLine);
 
-        // 方向箭头
         const arrowMat = new THREE.MeshPhongMaterial({ color: 0xff5252, emissive: 0x330000 });
         const arrowGeom = new THREE.ConeGeometry(0.25, 0.6, 4);
         let accDist = 0;
@@ -868,7 +828,6 @@ const Visualizer = (function () {
         currentPath = [];
     }
 
-    // 获取场景尺寸参数（供外部查询）
     function getGroundSize() { return groundSize; }
 
     function resetCamera() {

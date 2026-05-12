@@ -151,8 +151,16 @@
         </div>
     </div>
 
+    <script>
+        window.onerror = function(msg, url, line, col, err) {
+            var d = document.createElement('div');
+            d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(200,0,0,0.95);color:#fff;padding:10px;font-size:13px;font-family:monospace;white-space:pre-wrap;';
+            d.textContent = 'JS ERROR: ' + msg + ' (line ' + line + ')\n' + (err && err.stack || '');
+            document.body.appendChild(d);
+        };
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/OrbitControls.js"></script>
     <script src="js/path-planner.js"></script>
     <script src="js/drone-model.js"></script>
     <script src="js/farm-editor.js"></script>
